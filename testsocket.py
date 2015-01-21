@@ -10,6 +10,7 @@ import uuid
 from tornado.options import define, options
 
 define("port", default=8888, help="port to run on", type=int)
+define("debug", default=False, help="run in debug mode", type=bool)
 
 
 class Application(tornado.web.Application):
@@ -25,6 +26,7 @@ class Application(tornado.web.Application):
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
             xsrf_cookies=True,
+            debug=options.debug,
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
