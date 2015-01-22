@@ -6,8 +6,7 @@ Etherpy is an etherpad written in python with tornado and websockets.
 
 python
 python-tornado
-npm installed
-    http://blog.cp16net.net/npm-install-on-debian-wheezy/
+npm installed (http://blog.cp16net.net/npm-install-on-debian-wheezy/)
 
 ##Build it
 
