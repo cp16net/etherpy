@@ -15,4 +15,4 @@ Etherpy is an etherpad written in python with tornado and websockets.
 
     python testsocket.py --debug=True
 
-http://localhost:8888/code
+([http://localhost:8888/code])
