@@ -7,6 +7,7 @@
     <title>Etherpy</title>
     <!-- Le styles -->
     <link href="{{ static_url('bootstrap/css/bootstrap.css') }}" rel="stylesheet">
+    <script src="{{ static_url('jquery/jquery.js') }}"></script>
     <style>
       body {
       padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
@@ -18,6 +19,20 @@
     </style>
   </head>
   <body>
+    <div class="container">
+      <div class="panel panel-default">
+	<div>
+	  <form class="form-inline">
+            <select id="select-syntax-language" class="form-control">
+              <option value="ace/mode/python" selected="selected">python</option>
+              <option value="ace/mode/javascript">javascript</option>
+              <option value="ace/mode/html">html</option>
+            </select>
+	    Language Syntax
+	  </form>
+	</div>
+      </div>
+    </div>
     <div class="container">
       <div class="panel panel-default">
         <div class="panel-heading">
@@ -37,10 +52,7 @@
 	 ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="{{ static_url("ace/ace.js") }}" type="text/javascript" charset="utf-8"></script>
-    <script>
-      var editor = ace.edit("editor");
-      editor.getSession().setMode("ace/mode/python");
-    </script> 
+    <script src="{{ static_url("code.js") }}" type="text/javascript" charset="utf-8"></script>
     <script src="{{ static_url('jquery/jquery.js') }}"></script>
     <script src="{{ static_url('bootstrap/js/bootstrap.js') }}"></script> 
   </body>
