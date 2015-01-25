@@ -19,6 +19,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/", MainHandler),
             (r"/code", CodeHandler),
+            (r"/codesocket", CodeSocketHandler),
             (r"/chatsocket", ChatSocketHandler),
         ]
 
@@ -57,13 +58,40 @@ class MainHandler(RequestHandler):
 
 
 class CodeSocketHandler(tornado.websocket.WebSocketHandler):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(CodeSocketHandler, self).__init__(*args, **kwargs)
         self.waiters = set()
         self.cache = []
         self.cache_size = 50
 
     def open(self):
         self.waiters.add(self)
+
+    def on_close(self):
+        self.waiters.remove(self)
+
+    def _update_cache(self, message):
+        self.cache.append(message)
+        if len(self.cache) > self.cache_size:
+            self.cache = self.cache[-self.cache_size:]
+
+    def _send_updates(self, message):
+        logging.info("sending message to %d waiters" % len(self.waiters))
+        for waiter in self.waiters:
+            try:
+                waiter.write_message(message)
+            except:
+                logging.error("Error sending message", exc_info=True)
+
+    def on_message(self, message):
+        logging.info("got message %r" % message)
+        parsed = tornado.escape.json_decode(message)
+        chat = {
+            "id": str(uuid.uuid4()),
+            "message": parsed,
+        }
+        self._update_cache(message)
+        self._send_updates(message)
 
 
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
