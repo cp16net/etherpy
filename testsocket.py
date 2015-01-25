@@ -5,6 +5,7 @@ import tornado.options
 from tornado.web import RequestHandler
 import tornado.websocket
 import os.path
+from os import listdir
 import uuid
 
 from tornado.options import define, options
@@ -32,12 +33,37 @@ class Application(tornado.web.Application):
 
 class CodeHandler(RequestHandler):
     def get(self):
-        self.render("code.html")
+        config = {
+            "modes": self._find_ace_files("mode-"),
+            "themes": self._find_ace_files("theme-"),
+        }
+        self.render("code.html", **config)
+
+    def _find_ace_files(self, file_type):
+        path = os.path.join(os.path.dirname(__file__), "static/ace")
+        files = []
+        for f in listdir(path):
+            if f.startswith(file_type):
+                file_name = f[len(file_type):-3]
+                files.append(file_name)
+        files.sort()
+        print(files)
+        return files
 
 
 class MainHandler(RequestHandler):
     def get(self):
         self.render("index.html", messages=ChatSocketHandler.cache)
+
+
+class CodeSocketHandler(tornado.websocket.WebSocketHandler):
+    def __init__(self):
+        self.waiters = set()
+        self.cache = []
+        self.cache_size = 50
+
+    def open(self):
+        self.waiters.add(self)
 
 
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
