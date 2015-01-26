@@ -1,6 +1,7 @@
 var editor = ace.edit("editor");
 editor.getSession().setMode("ace/mode/python");
 editor.setTheme("ace/theme/monokai");
+editor.$blockScrolling = Infinity
 
 // change the syntax language
 $("#select-syntax-language").change(function (){
@@ -12,21 +13,19 @@ $("#select-theme").change(function (){
     editor.setTheme($(this).val());
 });
 
+var send_change_event = true;
 editor.getSession().on('change', function(e) {
-    var change_event = {
-	"start": {
-	    "row": e.data.range.start.row,
-	    "column": e.data.range.start.column,
-	},
-	"end": {
-	    "row": e.data.range.end.row,
-	    "column": e.data.range.end.column,
-	},
+    var delta_event = {
+	"range": e.data.range,
 	"action": e.data.action,
-	"text": e.data.text,
     }
-//    alert(JSON.stringify(change_event));
-    updater.sendMessage(change_event);
+    if (e.data.action == "insertLines") {
+	delta_event.lines = e.data.lines;
+    }
+    else if (e.data.action == "insertText") {
+	delta_event.text = e.data.text;
+    }
+    updater.sendMessage(delta_event);
 });
 
 var updater = {
@@ -41,10 +40,17 @@ var updater = {
 
     sendMessage: function(message) {
 	console.debug("sending data: " + message);
-	updater.socket.send(JSON.stringify(message));
+	if (send_change_event) {
+	    updater.socket.send(JSON.stringify(message));
+	}
+	else{
+	    send_change_event = true;
+	}
     },
 
     showMessage: function(message) {
+	send_change_event = false;
+	editor.getSession().doc.applyDeltas([JSON.parse(message.data)]);
 	console.debug("show message: " + message);
     },
 };

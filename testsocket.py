@@ -58,40 +58,47 @@ class MainHandler(RequestHandler):
 
 
 class CodeSocketHandler(tornado.websocket.WebSocketHandler):
-    def __init__(self, *args, **kwargs):
-        super(CodeSocketHandler, self).__init__(*args, **kwargs)
-        self.waiters = set()
-        self.cache = []
-        self.cache_size = 50
+    waiters = set()
+    cache = []
+    cache_size = 50
 
     def open(self):
-        self.waiters.add(self)
+        self.id = str(uuid.uuid4())
+        CodeSocketHandler.waiters.add(self)
 
     def on_close(self):
-        self.waiters.remove(self)
+        CodeSocketHandler.waiters.remove(self)
 
-    def _update_cache(self, message):
-        self.cache.append(message)
-        if len(self.cache) > self.cache_size:
-            self.cache = self.cache[-self.cache_size:]
+    @classmethod
+    def _update_cache(cls, message):
+        cls.cache.append(message)
+        if len(cls.cache) > cls.cache_size:
+            cls.cache = cls.cache[-cls.cache_size:]
 
-    def _send_updates(self, message):
-        logging.info("sending message to %d waiters" % len(self.waiters))
-        for waiter in self.waiters:
+    @classmethod
+    def _send_updates(cls, message, ignore):
+        logging.info("sending message to %d waiters" % len(cls.waiters))
+        logging.info("sending message %r" % message)
+        for waiter in cls.waiters:
             try:
-                waiter.write_message(message)
+                if waiter == ignore or message['user_id'] == waiter.id:
+                    logging.info("found socket to ignore")
+                    continue
+                waiter.write_message(message['message'])
             except:
                 logging.error("Error sending message", exc_info=True)
 
     def on_message(self, message):
         logging.info("got message %r" % message)
+        logging.info("self: %r" % self.__dict__)
         parsed = tornado.escape.json_decode(message)
         chat = {
             "id": str(uuid.uuid4()),
+            "user_id": self.id,
             "message": parsed,
         }
-        self._update_cache(message)
-        self._send_updates(message)
+        CodeSocketHandler._update_cache(chat)
+        CodeSocketHandler._send_updates(chat, self)
 
 
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
@@ -100,6 +107,7 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     cache_size = 200
 
     def open(self):
+        user_id = uuid.uuid4()
         ChatSocketHandler.waiters.add(self)
 
     def on_close(self):
@@ -112,11 +120,11 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
             cls.cache = cls.cache[-cls.cache_size:]
 
     @classmethod
-    def send_updates(cls, chat):
+    def send_updates(cls, chat, ignore):
         logging.info("sending message to %d waiters", len(cls.waiters))
         for waiter in cls.waiters:
             try:
-                waiter.write_message(chat)
+                waiter.write_message(tornado.escape.json_encode(chat))
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -130,7 +138,7 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
         chat["html"] = tornado.escape.to_basestring(
             self.render_string("message.html", message=chat))
         ChatSocketHandler.update_cache(chat)
-        ChatSocketHandler.send_updates(chat)
+        ChatSocketHandler.send_updates(chat, self)
 
 
 def main():
