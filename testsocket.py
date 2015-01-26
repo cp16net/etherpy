@@ -18,6 +18,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
+            (r"/chat", ChatHandler),
             (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
             (r"/chatsocket", ChatSocketHandler),
@@ -32,6 +33,11 @@ class Application(tornado.web.Application):
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
+class MainHandler(RequestHandler):
+    def get(self):
+        self.render("index.html")
+
+        
 class CodeHandler(RequestHandler):
     def get(self):
         config = {
@@ -52,7 +58,7 @@ class CodeHandler(RequestHandler):
         return files
 
 
-class MainHandler(RequestHandler):
+class ChatHandler(RequestHandler):
     def get(self):
         self.render("index.html", messages=ChatSocketHandler.cache)
 
