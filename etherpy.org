@@ -1,0 +1,15 @@
+* Etherpy notes
+
+** TODOS
+*** TODO [#A] add a backend database
+**** save current environment
+*** TODO [#B] identify users and allow login via google/github
+**** save users in database
+*** TODO [#B] Deploy to a testing environment
+*** TODO [#C] ability to create a new environment
+*** TODO [#C] users can create a private environemnt
+**** require a password to access environment
+** DONES
+*** DONE create a websocket server
+*** DONE create code editor environment
+*** DONE synchronize environment as changes occur across all connections
