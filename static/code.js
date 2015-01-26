@@ -19,10 +19,10 @@ editor.getSession().on('change', function(e) {
 	"range": e.data.range,
 	"action": e.data.action,
     }
-    if (e.data.action == "insertLines") {
+    if (e.data.action.indexOf("Lines") > -1) {
 	delta_event.lines = e.data.lines;
     }
-    else if (e.data.action == "insertText") {
+    else if (e.data.action.indexOf("Text") > -1) {
 	delta_event.text = e.data.text;
     }
     updater.sendMessage(delta_event);
