@@ -9,7 +9,7 @@
 *** TODO [#B] Deploy to a testing environment
 *** TODO [#B] add some automation
 **** tox.ini
-**** pep8 / coverage / jslint / better stuff? (grunt?)
+**** pep8 / coverage / jslint / better stuff? (fabric/grunt?)
 **** unit tests
 **** travis-ci setup and run
 **** readthedocs
