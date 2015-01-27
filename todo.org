@@ -3,8 +3,8 @@
 ** TODOS
 *** TODO [#A] add a backend database
 **** save current environment
-*** TODO [#A] cleanup and rename modules
-*** TODO [#B] identify users and allow login via google/github
+*** DONE [#A] cleanup and rename modules
+*** NEXT [#A] identify users and allow login via google/github
 **** save users in database
 *** TODO [#B] Deploy to a testing environment
 *** TODO [#B] add some automation
