@@ -38,7 +38,7 @@ function newMessage(form) {
 
 jQuery.fn.formToDict = function() {
     var fields = this.serializeArray();
-    var json = {}
+    var json = {};
     for (var i = 0; i < fields.length; i++) {
         json[fields[i].name] = fields[i].value;
     }

@@ -18,10 +18,8 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
-            (r"/chat", ChatHandler),
             (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
-            (r"/chatsocket", ChatSocketHandler),
         ]
 
         settings = dict(
@@ -54,7 +52,6 @@ class CodeHandler(RequestHandler):
                 file_name = f[len(file_type):-3]
                 files.append(file_name)
         files.sort()
-        print(files)
         return files
 
 
