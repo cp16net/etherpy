@@ -37,7 +37,7 @@ class EtherpyApplication(Application):
             debug=options.debug,
             github_api_key=secrets.GITHUB_CONSUMER_KEY,
             github_secret=secrets.GITHUB_CONSUMER_SECRET,
-            github_scope="gist",
+            github_scope="user:email,gist",
         )
         Application.__init__(self, handlers, **settings)
 
@@ -110,26 +110,26 @@ class CodeSocketHandler(WebSocketHandler):
 
 
 class GithubLoginHandler(tornado.web.RequestHandler, GithubMixin):
-    _OAUTH_REDIRECT_URL = 'http://localhost:8888/login'
+    _OAUTH_REDIRECT_URL = 'http://localhost:8888/'
     
     @tornado.web.asynchronous
     def get(self):
         redirect_uri = tornado.httputil.url_concat(
-            self._OAUTH_REDIRECT_URL,
+            self._OAUTH_REDIRECT_URL + 'login',
             {
                 'next': self.get_argument('next', '/')
             }
         )
         if self.get_argument("code", False):
             self.get_authenticated_user(
-                redirect_uri=redirect_uri,
+                redirect_uri=redirect_uri + "code",
                 client_id=self.settings["github_api_key"],
                 client_secret=self.settings["github_secret"],
                 code=self.get_argument("code"),
                 callback=self._on_login
             )
             return
-        self.authorize_redirect(redirect_uri=redirect_uri,
+        self.authorize_redirect(redirect_uri=redirect_uri + "login",
                                 client_id=self.settings["github_api_key"],
                                 extra_params={
                                     "scope": self.settings['github_scope'],

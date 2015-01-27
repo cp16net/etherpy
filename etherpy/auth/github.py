@@ -45,10 +45,10 @@ class GithubMixin(OAuth2Mixin):
 
         args = escape.parse_qs_bytes(escape.native_str(response.body))
         session = {
-            "access_token": args['access_token'][-1],
+            "access_token": args['access_token'],
             "expires": args.get("expires"),
         }
-
+        logging.info("session %s" % session)
         self.github_request(
             path="/user",
             callback=functools.partial(self._on_get_user_info,
@@ -87,14 +87,12 @@ class GithubMixin(OAuth2Mixin):
             url += "?" + urllib.urlencode(all_args)
         callback = functools.partial(self._on_github_request, callback)
         http = httpclient.AsyncHTTPClient()
-        httpclient.AsyncHTTPClient.configure(None,
-                                             defaults=dict(user_agent="Etherpy"))
         logging.info("http connection: %s" % http)
         if post_args is not None:
             http.fetch(url, method="POST", body=urllib.urlencode(post_args),
                        callback=callback)
         else:
-            http.fetch(url, callback=callback, headers={'User-Agent': "Etherpy"})
+            http.fetch(url, callback=callback, user_agent="Etherpy")
 
     def _on_github_request(self, future, response):
         if response.error:
