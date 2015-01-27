@@ -12,9 +12,9 @@ Etherpy is an etherpad written in python with tornado and websockets.
     cd lib/jquery && npm run build
 
 ##Run it
-    python testsocket.py
+    python etherpy/etherpy.py
 
 ##Debug it
-    python testsocket.py --debug=True
+    python etherpy/etherpy.py --debug=True
 
 http://localhost:8888/code

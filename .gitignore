@@ -55,3 +55,6 @@ target/
 
 # emacs tmp/autosave files
 .#*
+
+# my secrets
+secrets.py

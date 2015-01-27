@@ -94,5 +94,4 @@ class GithubMixin(OAuth2Mixin):
                             response.request.url)
             callback(None)
             return
-        callback(escape.json_decode(response.body)
-                 
+        callback(escape.json_decode(response.body))

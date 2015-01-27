@@ -1,14 +1,17 @@
 import logging
-import tornado.escape
-import tornado.ioloop
-import tornado.options
-from tornado.web import RequestHandler
-import tornado.websocket
-import os.path
-from os import listdir
+import os
 import uuid
 
-from tornado.options import define, options
+from tornado import escape
+from tornado import ioloop
+from tornado import options as tor_options
+from tornado.options import define
+from tornado.options import options
+from tornado.web import RequestHandler
+from tornado.websocket import WebSocketHandler
+
+from etherpy.auth.github import GithubMixin
+from etherpy import secrets
 
 define("port", default=8888, help="port to run on", type=int)
 define("debug", default=False, help="run in debug mode", type=bool)
@@ -18,16 +21,19 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
+            (r"/login", GithubLoginHandler),
             (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
         ]
 
         settings = dict(
-            cookie_secret="my-test-socket-secret-cookie",
-            template_path=os.path.join(os.path.dirname(__file__), "templates"),
-            static_path=os.path.join(os.path.dirname(__file__), "static"),
+            cookie_secret=secrets.COOKIE_SECRET,
+            template_path=os.path.join(os.path.dirname(__file__), "../templates"),
+            static_path=os.path.join(os.path.dirname(__file__), "../static"),
             xsrf_cookies=True,
             debug=options.debug,
+            github_api_key=secrets.GITHUB_CONSUMER_KEY,
+            github_secret=secrets.GITHUB_CONSUMER_SECRET,            
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
@@ -45,9 +51,9 @@ class CodeHandler(RequestHandler):
         self.render("code.html", **config)
 
     def _find_ace_files(self, file_type):
-        path = os.path.join(os.path.dirname(__file__), "static/ace")
+        path = self.settings[static_path] + "/ace"
         files = []
-        for f in listdir(path):
+        for f in os.listdir(path):
             if f.startswith(file_type):
                 file_name = f[len(file_type):-3]
                 files.append(file_name)
@@ -55,12 +61,7 @@ class CodeHandler(RequestHandler):
         return files
 
 
-class ChatHandler(RequestHandler):
-    def get(self):
-        self.render("index.html", messages=ChatSocketHandler.cache)
-
-
-class CodeSocketHandler(tornado.websocket.WebSocketHandler):
+class CodeSocketHandler(WebSocketHandler):
     waiters = set()
     cache = []
     cache_size = 50
@@ -94,7 +95,7 @@ class CodeSocketHandler(tornado.websocket.WebSocketHandler):
     def on_message(self, message):
         logging.info("got message %r" % message)
         logging.info("self: %r" % self.__dict__)
-        parsed = tornado.escape.json_decode(message)
+        parsed = escape.json_decode(message)
         chat = {
             "id": str(uuid.uuid4()),
             "user_id": self.id,
@@ -104,51 +105,33 @@ class CodeSocketHandler(tornado.websocket.WebSocketHandler):
         CodeSocketHandler._send_updates(chat, self)
 
 
-class ChatSocketHandler(tornado.websocket.WebSocketHandler):
-    waiters = set()
-    cache = []
-    cache_size = 200
-
-    def open(self):
-        user_id = uuid.uuid4()
-        ChatSocketHandler.waiters.add(self)
-
-    def on_close(self):
-        ChatSocketHandler.waiters.remove(self)
-
-    @classmethod
-    def update_cache(cls, chat):
-        cls.cache.append(chat)
-        if len(cls.cache) > cls.cache_size:
-            cls.cache = cls.cache[-cls.cache_size:]
-
-    @classmethod
-    def send_updates(cls, chat, ignore):
-        logging.info("sending message to %d waiters", len(cls.waiters))
-        for waiter in cls.waiters:
-            try:
-                waiter.write_message(tornado.escape.json_encode(chat))
-            except:
-                logging.error("Error sending message", exc_info=True)
-
-    def on_message(self, message):
-        logging.info("got message %r", message)
-        parsed = tornado.escape.json_decode(message)
-        chat = {
-            "id": str(uuid.uuid4()),
-            "body": parsed["body"],
-        }
-        chat["html"] = tornado.escape.to_basestring(
-            self.render_string("message.html", message=chat))
-        ChatSocketHandler.update_cache(chat)
-        ChatSocketHandler.send_updates(chat, self)
+class GithubLoginHandler(RequestHandler, GithubMixin):
+    _OAUTH_REDIRECT_URL = 'http://localhost:8888/auth/github'
+    
+    @tornado.web.asynchronous
+    def get(self):
+        if self.get_argument("code", False):
+            self.get_authenticated_user(
+                redirect_uri='/auth/github/',
+                client_id=self.settings["github_api_key"],
+                client_secret=self.settings["github_secret"],
+                code=self.get_argument("code"),
+                callback=self.async_callback(self._on_login))
+            return
+        self.authorize_redirect(redirect_uri='/auth/github/',
+                                client_id=self.settings["github_api_key"],
+                                extra_params={"scope": "read_stream,offline_access"})
+        
+    def _on_login(self, user):
+        logging.debug(user)
+        self.finish()
 
 
 def main():
-    tornado.options.parse_command_line()
+    tor_options.parse_command_line()
     app = Application()
     app.listen(options.port)
-    tornado.ioloop.IOLoop.instance().start()
+    ioloop.IOLoop.instance().start()
 
 
 if __name__ == "__main__":
