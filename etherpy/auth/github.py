@@ -1,9 +1,12 @@
+import functools
 import logging
 import urllib
 
 from tornado import httpclient
 from tornado import escape
 from tornado.auth import OAuth2Mixin
+from tornado.auth import _auth_return_future
+from tornado.auth import AuthError
 
 
 class GithubMixin(OAuth2Mixin):
@@ -12,50 +15,51 @@ class GithubMixin(OAuth2Mixin):
     _OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
     _OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
     _OAUTH_NO_CALLBACKS = False
+    _GITHUB_BASE_URL = "https://api.github.com"
 
+    @_auth_return_future
     def get_authenticated_user(self, redirect_uri, client_id, client_secret,
                                code, callback, extra_fields=None):
-        http = httclient.AsyncHTTPClient()
+        http = httpclient.AsyncHTTPClient()
         args = {
             "redirect_uri": redirect_uri,
             "code": code,
             "client_id": client_id,
             "client_secret": client_secret,
         }
-        fields = set(['id', 'name', 'first_name', 'last_name',
-                      'locale', 'picture', 'link'])
+        fields = set([])
         if extra_fields:
             fields.update(extra_fields)
 
         http.fetch(self._oauth_request_token_url(**args),
-                   self.async_callback(self.on_access_token, redirect_uri,
-                                       client_id, client_secret, callback,
-                                       fields))
+                   functools.partial(self._on_access_token, redirect_uri,
+                                     client_id, client_secret, callback,
+                                     fields))
 
     def _on_access_token(self, redirect_uri, client_id, client_secret,
-                         callback, fields, response):
+                         future, fields, response):
         if response.error:
-            logging.warning("Github auth error: %s" % str(response))
-            callback(None)
+            future.set_exception(
+                AuthError("Github auth error: %s" % str(response)))
             return
 
-        args = escape.parse_qs_bytes(escape.natrive_str(response.body))
+        args = escape.parse_qs_bytes(escape.native_str(response.body))
         session = {
-            "access_token": args['access_token'],
+            "access_token": args['access_token'][-1],
             "expires": args.get("expires"),
         }
 
         self.github_request(
             path="/user",
-            callback=self.async_callback(self._on_get_user_info,
-                                         callback, session, fields),
+            callback=functools.partial(self._on_get_user_info,
+                                       future, session, fields),
             access_token=session['access_token'],
-            fields=",".join(fields)
+#            fields=",".join(fields)
         )
 
-    def _on_get_user_info(self, callback, session, fields, user):
+    def _on_get_user_info(self, future, session, fields, user):
         if user is None:
-            callback(None)
+            future.set_result(None)
             return
 
         fieldmap = {}
@@ -68,30 +72,35 @@ class GithubMixin(OAuth2Mixin):
                     "session_expires": session.get("expires"),
                 }
             )
-            callback(fieldmap)
+            future.set_result(fieldmap)
 
+    @_auth_return_future
     def github_request(self, path, callback, access_token=None,
-                       post_args=None, **kwargs):
-        url = "https://api.github.com" + path
+                       post_args=None, **args):
+        url = self._GITHUB_BASE_URL + path
         all_args = {}
         if access_token:
             all_args['access_token'] = access_token
-            all_args.update(kwargs)
-            all_args.update(post_args or {})
+            all_args.update(args)
+
         if all_args:
             url += "?" + urllib.urlencode(all_args)
-        callback = self.async_callback(self.on_github_request, callback)
+        callback = functools.partial(self._on_github_request, callback)
         http = httpclient.AsyncHTTPClient()
+        httpclient.AsyncHTTPClient.configure(None,
+                                             defaults=dict(user_agent="Etherpy"))
+        logging.info("http connection: %s" % http)
         if post_args is not None:
             http.fetch(url, method="POST", body=urllib.urlencode(post_args),
                        callback=callback)
         else:
-            http.fetch(url, callback=callback)
+            http.fetch(url, callback=callback, headers={'User-Agent': "Etherpy"})
 
-    def _on_github_request(self, callback, response):
+    def _on_github_request(self, future, response):
         if response.error:
-            logging.warning("Error response %s fetching %s", response.error,
-                            response.request.url)
-            callback(None)
+            future.set_exception(AuthError("Error response: %s" % response,
+                                           response.error,
+                                           response.request.url,
+                                           response.body))
             return
-        callback(escape.json_decode(response.body))
+        future.set_result(escape.json_decode(response.body))

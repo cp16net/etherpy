@@ -8,16 +8,19 @@ from tornado import options as tor_options
 from tornado.options import define
 from tornado.options import options
 from tornado.web import RequestHandler
+from tornado.web import Application
 from tornado.websocket import WebSocketHandler
+import tornado.httputil
+import tornado.web
 
-from etherpy.auth.github import GithubMixin
-from etherpy import secrets
+from auth.github import GithubMixin
+import secrets
 
 define("port", default=8888, help="port to run on", type=int)
 define("debug", default=False, help="run in debug mode", type=bool)
 
 
-class Application(tornado.web.Application):
+class EtherpyApplication(Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
@@ -33,9 +36,10 @@ class Application(tornado.web.Application):
             xsrf_cookies=True,
             debug=options.debug,
             github_api_key=secrets.GITHUB_CONSUMER_KEY,
-            github_secret=secrets.GITHUB_CONSUMER_SECRET,            
+            github_secret=secrets.GITHUB_CONSUMER_SECRET,
+            github_scope="gist",
         )
-        tornado.web.Application.__init__(self, handlers, **settings)
+        Application.__init__(self, handlers, **settings)
 
 class MainHandler(RequestHandler):
     def get(self):
@@ -51,7 +55,7 @@ class CodeHandler(RequestHandler):
         self.render("code.html", **config)
 
     def _find_ace_files(self, file_type):
-        path = self.settings[static_path] + "/ace"
+        path = self.settings['static_path'] + "/ace"
         files = []
         for f in os.listdir(path):
             if f.startswith(file_type):
@@ -105,31 +109,41 @@ class CodeSocketHandler(WebSocketHandler):
         CodeSocketHandler._send_updates(chat, self)
 
 
-class GithubLoginHandler(RequestHandler, GithubMixin):
-    _OAUTH_REDIRECT_URL = 'http://localhost:8888/auth/github'
+class GithubLoginHandler(tornado.web.RequestHandler, GithubMixin):
+    _OAUTH_REDIRECT_URL = 'http://localhost:8888/login'
     
     @tornado.web.asynchronous
     def get(self):
+        redirect_uri = tornado.httputil.url_concat(
+            self._OAUTH_REDIRECT_URL,
+            {
+                'next': self.get_argument('next', '/')
+            }
+        )
         if self.get_argument("code", False):
             self.get_authenticated_user(
-                redirect_uri='/auth/github/',
+                redirect_uri=redirect_uri,
                 client_id=self.settings["github_api_key"],
                 client_secret=self.settings["github_secret"],
                 code=self.get_argument("code"),
-                callback=self.async_callback(self._on_login))
+                callback=self._on_login
+            )
             return
-        self.authorize_redirect(redirect_uri='/auth/github/',
+        self.authorize_redirect(redirect_uri=redirect_uri,
                                 client_id=self.settings["github_api_key"],
-                                extra_params={"scope": "read_stream,offline_access"})
+                                extra_params={
+                                    "scope": self.settings['github_scope'],
+                                    "foo":"bar",
+                                })
         
     def _on_login(self, user):
-        logging.debug(user)
+        logging.info(user)
         self.finish()
 
 
 def main():
     tor_options.parse_command_line()
-    app = Application()
+    app = EtherpyApplication()
     app.listen(options.port)
     ioloop.IOLoop.instance().start()
 
