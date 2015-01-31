@@ -27,7 +27,8 @@ class GithubMixin(OAuth2Mixin):
             "client_id": client_id,
             "client_secret": client_secret,
         }
-        fields = set([])
+        fields = set(["id", "login", "name", "email",
+                      "location", "url", "gists_url"])
         if extra_fields:
             fields.update(extra_fields)
 
@@ -42,26 +43,29 @@ class GithubMixin(OAuth2Mixin):
             future.set_exception(
                 AuthError("Github auth error: %s" % str(response)))
             return
-
+        logging.info("response: %r" % response)
+        logging.info("response.body: %r" % response.body)
         args = escape.parse_qs_bytes(escape.native_str(response.body))
+        logging.info("args: %r" % args)
         session = {
-            "access_token": args['access_token'],
+            "access_token": args['access_token'][0],
             "expires": args.get("expires"),
         }
-        logging.info("session %s" % session)
+
+        logging.info("session: %s" % session)
         self.github_request(
             path="/user",
             callback=functools.partial(self._on_get_user_info,
                                        future, session, fields),
             access_token=session['access_token'],
-#            fields=",".join(fields)
+            fields=",".join(fields)
         )
 
     def _on_get_user_info(self, future, session, fields, user):
         if user is None:
             future.set_result(None)
             return
-
+        logging.info("session: %r" % session)
         fieldmap = {}
         for field in fields:
             fieldmap[field]= user.get(field)
@@ -72,7 +76,10 @@ class GithubMixin(OAuth2Mixin):
                     "session_expires": session.get("expires"),
                 }
             )
-            future.set_result(fieldmap)
+        logging.info("fieldmap: %r" % fieldmap)
+        logging.info("fields: %r" % fields)
+        logging.info("user: %r" % user)
+        future.set_result(fieldmap)
 
     @_auth_return_future
     def github_request(self, path, callback, access_token=None,

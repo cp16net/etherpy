@@ -11,13 +11,16 @@ from tornado.web import RequestHandler
 from tornado.web import Application
 from tornado.websocket import WebSocketHandler
 import tornado.httputil
-import tornado.web
+#import tornado.web
+import tornado.gen
 
 from auth.github import GithubMixin
 import secrets
 
 define("port", default=8888, help="port to run on", type=int)
 define("debug", default=False, help="run in debug mode", type=bool)
+
+users = []
 
 
 class EtherpyApplication(Application):
@@ -38,6 +41,7 @@ class EtherpyApplication(Application):
             github_api_key=secrets.GITHUB_CONSUMER_KEY,
             github_secret=secrets.GITHUB_CONSUMER_SECRET,
             github_scope="user:email,gist",
+            extra_fields=[],
         )
         Application.__init__(self, handlers, **settings)
 
@@ -45,7 +49,7 @@ class MainHandler(RequestHandler):
     def get(self):
         self.render("index.html")
 
-        
+
 class CodeHandler(RequestHandler):
     def get(self):
         config = {
@@ -111,35 +115,37 @@ class CodeSocketHandler(WebSocketHandler):
 
 class GithubLoginHandler(tornado.web.RequestHandler, GithubMixin):
     _OAUTH_REDIRECT_URL = 'http://localhost:8888/'
-    
-    @tornado.web.asynchronous
+
+    @tornado.gen.coroutine
     def get(self):
         redirect_uri = tornado.httputil.url_concat(
             self._OAUTH_REDIRECT_URL + 'login',
-            {
-                'next': self.get_argument('next', '/')
-            }
+            {'next': self.get_argument('next', '/code')}
         )
         if self.get_argument("code", False):
-            self.get_authenticated_user(
-                redirect_uri=redirect_uri + "code",
+            logging.info("code arg: %r" % self.get_argument("code"))
+            user = yield self.get_authenticated_user(
+                redirect_uri=self._OAUTH_REDIRECT_URL + "code",
                 client_id=self.settings["github_api_key"],
                 client_secret=self.settings["github_secret"],
                 code=self.get_argument("code"),
-                callback=self._on_login
+                extra_fields=self.settings["extra_fields"]
             )
-            return
-        self.authorize_redirect(redirect_uri=redirect_uri + "login",
-                                client_id=self.settings["github_api_key"],
-                                extra_params={
-                                    "scope": self.settings['github_scope'],
-                                    "foo":"bar",
-                                })
-        
+            self._on_login(user)
+            self.redirect(self.get_argument("next", u"/"))
+        else:
+            yield self.authorize_redirect(
+                redirect_uri=redirect_uri,
+                client_id=self.settings["github_api_key"],
+                extra_params={
+                    "scope": self.settings['github_scope'],
+                }
+            )
+
     def _on_login(self, user):
         logging.info(user)
-        self.finish()
-
+        users.append(user)
+        self.set_secure_cookie("user", tornado.escape.json_encode(user))
 
 def main():
     tor_options.parse_command_line()
