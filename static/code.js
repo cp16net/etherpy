@@ -5,7 +5,7 @@ editor.$blockScrolling = Infinity
 
 // change the syntax language
 $("#select-syntax-language").change(function (){
-    editor.getSession().setMode($(this).val());      
+    editor.getSession().setMode($(this).val());
 });
 
 // change the theme
@@ -13,7 +13,6 @@ $("#select-theme").change(function (){
     editor.setTheme($(this).val());
 });
 
-var send_change_event = true;
 editor.getSession().on('change', function(e) {
     var delta_event = {
 	"range": e.data.range,
@@ -40,16 +39,13 @@ var updater = {
 
     sendMessage: function(message) {
 	console.debug("sending data: " + message);
-	if (send_change_event) {
+	var cur = editor.curOp
+	if ('name' in cur.command && cur.command.name.indexOf("insert") > -1) {
 	    updater.socket.send(JSON.stringify(message));
-	}
-	else{
-	    send_change_event = true;
 	}
     },
 
     showMessage: function(message) {
-	send_change_event = false;
 	editor.getSession().doc.applyDeltas([JSON.parse(message.data)]);
 	console.debug("show message: " + message);
     },
