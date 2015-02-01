@@ -1,5 +1,6 @@
 import logging
 import os
+from pymongo import MongoClient
 import uuid
 
 from tornado import escape
@@ -32,10 +33,12 @@ class EtherpyApplication(Application):
             (r"/", MainHandler),
             (r"/login", GithubLoginHandler),
             (r"/logout", LogoutHandler),
-            (r"/user/(.*)", ProfileHandler),
             (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
+            (r"/user/(.*)", ProfileHandler),
         ]
+
+        client = MongoClient(secrets.MONGO_HOST, secrets.MONGO_PORT)
 
         settings = dict(
             cookie_secret=secrets.COOKIE_SECRET,
@@ -47,11 +50,14 @@ class EtherpyApplication(Application):
             github_secret=secrets.GITHUB_CONSUMER_SECRET,
             github_scope="user:email,gist",
             extra_fields=[],
+            db=client.etherpy
         )
         Application.__init__(self, handlers, **settings)
 
 
 def main():
+#TODO(cp16net) change this to use a conf file
+#    tor_options.parse_config_file("etherpy.conf")
     tor_options.parse_command_line()
     app = EtherpyApplication()
     app.listen(options.port)

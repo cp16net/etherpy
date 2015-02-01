@@ -28,7 +28,9 @@ class GithubMixin(OAuth2Mixin):
             "client_secret": client_secret,
         }
         fields = set(["id", "login", "name", "email",
-                      "location", "url", "gists_url"])
+                      "location", "url", "gists_url",
+                      "avatar_url", "bio", "gravatar_id",
+                      "blog", ])
         if extra_fields:
             fields.update(extra_fields)
 

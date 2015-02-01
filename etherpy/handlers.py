@@ -10,9 +10,6 @@ import tornado.gen
 from auth.github import GithubMixin
 
 
-users = []
-
-
 class BaseHandler(RequestHandler):
     def get_current_user(self):
         user = self.get_secure_cookie("user")
@@ -26,8 +23,9 @@ class MainHandler(BaseHandler):
 
 
 class ProfileHandler(BaseHandler):
-    def get(self):
-        self.render("profile.html")
+    def get(self, user_name):
+        user = self.get_current_user()
+        self.render("profile.html", user=user)
 
 
 class CodeHandler(BaseHandler):
@@ -124,12 +122,17 @@ class GithubLoginHandler(BaseHandler, GithubMixin):
             )
 
     def _on_login(self, user):
+        login_user = tornado.escape.json_encode(user)
         logging.info(user)
-        users.append(user)
-        self.set_secure_cookie("user", tornado.escape.json_encode(user))
+        self.settings['db'].users.update(
+            {"login": user['login']},
+            user,
+            upsert=True
+        )
+        self.set_secure_cookie("user", login_user)
 
 
 class LogoutHandler(BaseHandler):
     def get(self):
         self.clear_cookie("user")
-        self.redirect("/")
+        self.redirect("/code")
