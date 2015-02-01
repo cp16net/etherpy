@@ -1,11 +1,15 @@
 * Etherpy notes
 
 ** TODOS
-*** TODO [#A] add a backend database
+*** DONE [#A] add a backend database
 **** save current environment
 *** DONE [#A] cleanup and rename modules
-*** NEXT [#A] identify users and allow login via google/github
+*** DONE [#A] identify users and allow login via google/github
 **** save users in database
+*** TODO [#A] save the document to the db
+*** TODO [#A] make button to save the document
+**** github (public/private) gist
+*** TODO [#B] clean up web ui
 *** TODO [#B] Deploy to a testing environment
 *** TODO [#B] add some automation
 **** tox.ini
