@@ -7,20 +7,23 @@ from tornado import ioloop
 from tornado import options as tor_options
 from tornado.options import define
 from tornado.options import options
-from tornado.web import RequestHandler
+
 from tornado.web import Application
 from tornado.websocket import WebSocketHandler
 import tornado.httputil
-#import tornado.web
 import tornado.gen
 
 from auth.github import GithubMixin
 import secrets
+from handlers import MainHandler
+from handlers import GithubLoginHandler
+from handlers import ProfileHandler
+from handlers import CodeHandler
+from handlers import CodeSocketHandler
+from handlers import LogoutHandler
 
 define("port", default=8888, help="port to run on", type=int)
 define("debug", default=False, help="run in debug mode", type=bool)
-
-users = []
 
 
 class EtherpyApplication(Application):
@@ -28,6 +31,8 @@ class EtherpyApplication(Application):
         handlers = [
             (r"/", MainHandler),
             (r"/login", GithubLoginHandler),
+            (r"/logout", LogoutHandler),
+            (r"/user/(.*)", ProfileHandler),
             (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
         ]
@@ -45,107 +50,6 @@ class EtherpyApplication(Application):
         )
         Application.__init__(self, handlers, **settings)
 
-class MainHandler(RequestHandler):
-    def get(self):
-        self.render("index.html")
-
-
-class CodeHandler(RequestHandler):
-    def get(self):
-        config = {
-            "modes": self._find_ace_files("mode-"),
-            "themes": self._find_ace_files("theme-"),
-        }
-        self.render("code.html", **config)
-
-    def _find_ace_files(self, file_type):
-        path = self.settings['static_path'] + "/ace"
-        files = []
-        for f in os.listdir(path):
-            if f.startswith(file_type):
-                file_name = f[len(file_type):-3]
-                files.append(file_name)
-        files.sort()
-        return files
-
-
-class CodeSocketHandler(WebSocketHandler):
-    waiters = set()
-    cache = []
-    cache_size = 50
-
-    def open(self):
-        self.id = str(uuid.uuid4())
-        CodeSocketHandler.waiters.add(self)
-
-    def on_close(self):
-        CodeSocketHandler.waiters.remove(self)
-
-    @classmethod
-    def _update_cache(cls, message):
-        cls.cache.append(message)
-        if len(cls.cache) > cls.cache_size:
-            cls.cache = cls.cache[-cls.cache_size:]
-
-    @classmethod
-    def _send_updates(cls, message, ignore):
-        logging.info("sending message to %d waiters" % len(cls.waiters))
-        logging.info("sending message %r" % message)
-        for waiter in cls.waiters:
-            try:
-                if waiter == ignore or message['user_id'] == waiter.id:
-                    logging.info("found socket to ignore")
-                    continue
-                waiter.write_message(message['message'])
-            except:
-                logging.error("Error sending message", exc_info=True)
-
-    def on_message(self, message):
-        logging.info("got message %r" % message)
-        logging.info("self: %r" % self.__dict__)
-        parsed = escape.json_decode(message)
-        chat = {
-            "id": str(uuid.uuid4()),
-            "user_id": self.id,
-            "message": parsed,
-        }
-        CodeSocketHandler._update_cache(chat)
-        CodeSocketHandler._send_updates(chat, self)
-
-
-class GithubLoginHandler(tornado.web.RequestHandler, GithubMixin):
-    _OAUTH_REDIRECT_URL = 'http://localhost:8888/'
-
-    @tornado.gen.coroutine
-    def get(self):
-        redirect_uri = tornado.httputil.url_concat(
-            self._OAUTH_REDIRECT_URL + 'login',
-            {'next': self.get_argument('next', '/code')}
-        )
-        if self.get_argument("code", False):
-            logging.info("code arg: %r" % self.get_argument("code"))
-            user = yield self.get_authenticated_user(
-                redirect_uri=self._OAUTH_REDIRECT_URL + "code",
-                client_id=self.settings["github_api_key"],
-                client_secret=self.settings["github_secret"],
-                code=self.get_argument("code"),
-                extra_fields=self.settings["extra_fields"]
-            )
-            self._on_login(user)
-            self.redirect(self.get_argument("next", u"/"))
-        else:
-            yield self.authorize_redirect(
-                redirect_uri=redirect_uri,
-                client_id=self.settings["github_api_key"],
-                extra_params={
-                    "scope": self.settings['github_scope'],
-                }
-            )
-
-    def _on_login(self, user):
-        logging.info(user)
-        users.append(user)
-        self.set_secure_cookie("user", tornado.escape.json_encode(user))
 
 def main():
     tor_options.parse_command_line()

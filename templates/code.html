@@ -42,8 +42,13 @@
 	    Theme
 	  </form>
 	</div>
-	<div class="pull-right">
+	<div class="pull-left">
+	  {% if user %}
+	  <a href="/user/{{user}}"><button class="btn btn-primary" type="button">{{user}}</button></a>
+	  <a href="/logout"><button class="btn btn-primary" type="button">logout</button></a>
+	  {% else %}
 	  <a href="/login"><button class="btn btn-primary" type="button">Login</button></a>
+	  {% end %}
 	</div>
       </div>
     </div>
