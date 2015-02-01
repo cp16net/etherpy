@@ -83,13 +83,18 @@ class CodeSocketHandler(WebSocketHandler):
         logging.info("got message %r" % message)
         logging.info("self: %r" % self.__dict__)
         parsed = escape.json_decode(message)
-        chat = {
-            "id": str(uuid.uuid4()),
-            "user_id": self.id,
-            "message": parsed,
-        }
-        CodeSocketHandler._update_cache(chat)
-        CodeSocketHandler._send_updates(chat, self)
+        if parsed['type'] == "delta_event":
+            chat = {
+                "id": str(uuid.uuid4()),
+                "user_id": self.id,
+                "message": parsed['data'],
+            }
+            CodeSocketHandler._update_cache(chat)
+            CodeSocketHandler._send_updates(chat, self)
+        elif parsed['type'] == "document_save":
+            document = {
+
+            }
 
 
 class GithubLoginHandler(BaseHandler, GithubMixin):
