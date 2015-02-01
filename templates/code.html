@@ -44,7 +44,7 @@
 	</div>
 	<div class="pull-left">
 	  {% if user %}
-	  <a href="/user/{{user}}"><button class="btn btn-primary" type="button">{{user}}</button></a>
+	  <a href="/user/{{user['login']}}"><button class="btn btn-primary" type="button">{{user['login']}}</button></a>
 	  <a href="/logout"><button class="btn btn-primary" type="button">logout</button></a>
 	  {% else %}
 	  <a href="/login"><button class="btn btn-primary" type="button">Login</button></a>
@@ -56,13 +56,16 @@
       <div class="panel panel-default">
         <div class="panel-heading">
           <h3 class="panel-title">Etherpy</h3>
-
         </div>
         <div class="panel-body">
+	  {% if document_data %}
+	  <div id="editor">{{document_data.get(body)}}</div>
+	  {% else %}
           <div id="editor">def foo(items) {
-    var x = "All this is syntax highlighted";
-    return x;
-}</div>
+var x = "All this is syntax highlighted";
+return x;
+	    }</div>
+	  {% end %}
         </div>
       </div>
     </div>

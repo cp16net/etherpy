@@ -31,6 +31,21 @@ editor.getSession().on('change', function(e) {
     updater.sendMessage(payload);
 });
 
+// var save_timer = setInterval(function () {
+//     var paths = window.location.pathname.split('/')
+//     payload = {
+// 	"type": "document_save",
+// 	"data": {
+// 	    "id": paths[paths.length-1],
+// 	    "body": editor.getSession().getValue(),
+// 	    "theme": editor.renderer.$themeId,
+// 	    "mode": editor.getSession().$modeId
+// 	}
+//     }
+//     updater.sendMessage(payload);
+// }, 10 * 1000);
+
+
 var updater = {
     socket: null,
 
@@ -44,7 +59,10 @@ var updater = {
     sendMessage: function(message) {
 	console.debug("sending data: " + message);
 	var cur = editor.curOp
-	if ('name' in cur.command && cur.command.name.indexOf("insert") > -1) {
+	if (cur && 'name' in cur.command && cur.command.name.indexOf("insert") > -1) {
+	    updater.socket.send(JSON.stringify(message));
+	}
+	else if (message.type == "document_save") {
 	    updater.socket.send(JSON.stringify(message));
 	}
     },

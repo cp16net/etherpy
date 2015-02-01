@@ -20,6 +20,7 @@ from handlers import MainHandler
 from handlers import GithubLoginHandler
 from handlers import ProfileHandler
 from handlers import CodeHandler
+from handlers import NewCodeHandler
 from handlers import CodeSocketHandler
 from handlers import LogoutHandler
 
@@ -33,8 +34,9 @@ class EtherpyApplication(Application):
             (r"/", MainHandler),
             (r"/login", GithubLoginHandler),
             (r"/logout", LogoutHandler),
-            (r"/code", CodeHandler),
             (r"/codesocket", CodeSocketHandler),
+            (r"/code", NewCodeHandler),
+            (r"/code/(.*)", CodeHandler),
             (r"/user/(.*)", ProfileHandler),
         ]
 

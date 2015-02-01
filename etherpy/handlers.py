@@ -17,6 +17,14 @@ class BaseHandler(RequestHandler):
             return tornado.escape.json_decode(user)
         return None
 
+    def get_db_connection(self):
+        return self.settings['db']
+
+    def get_document_data(self, document_id):
+        db = self.get_db_connection()
+        return db.documents.find_one({"id":document_id})
+
+
 class MainHandler(BaseHandler):
     def get(self):
         self.render("index.html")
@@ -29,11 +37,16 @@ class ProfileHandler(BaseHandler):
 
 
 class CodeHandler(BaseHandler):
-    def get(self):
+    def get(self, document_id):
+        # if self.get_current_user():
+        #     self.get_current_user()['login']
+        # else:
+        #     ""
         config = {
             "modes": self._find_ace_files("mode-"),
             "themes": self._find_ace_files("theme-"),
-            "user": self.get_current_user()['login'] if self.get_current_user() else "",
+            "user": self.get_current_user(),
+            "document_data": self.get_document_data(document_id),
         }
         self.render("code.html", **config)
 
@@ -46,6 +59,12 @@ class CodeHandler(BaseHandler):
                 files.append(file_name)
         files.sort()
         return files
+
+
+class NewCodeHandler(BaseHandler):
+    def get(self):
+        document_id = str(uuid.uuid4())
+        self.redirect("/code/" + document_id)
 
 
 class CodeSocketHandler(WebSocketHandler):
@@ -92,9 +111,21 @@ class CodeSocketHandler(WebSocketHandler):
             CodeSocketHandler._update_cache(chat)
             CodeSocketHandler._send_updates(chat, self)
         elif parsed['type'] == "document_save":
+            user = self.get_current_user()
+            logging.info("got user: %s" % user)
             document = {
-
+                "user_id": user['_id'],
+                "id": parsed['data']['id'],
+                "body": parsed['data']['body'],
+                "theme": parsed['data']['theme'],
+                "mode": parsed['data']['mode'],
             }
+            db = self.get_db_connection()
+            db.documents.update(
+                {"id": parsed['data']['id']},
+                document,
+                upsert=True
+            )
 
 
 class GithubLoginHandler(BaseHandler, GithubMixin):
@@ -129,7 +160,8 @@ class GithubLoginHandler(BaseHandler, GithubMixin):
     def _on_login(self, user):
         login_user = tornado.escape.json_encode(user)
         logging.info(user)
-        self.settings['db'].users.update(
+        db = self.get_db_connection()
+        db.users.update(
             {"login": user['login']},
             user,
             upsert=True
