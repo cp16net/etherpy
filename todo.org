@@ -6,21 +6,22 @@
 *** DONE [#A] cleanup and rename modules
 *** DONE [#A] identify users and allow login via google/github
 **** save users in database
+*** IN PROGRESS [#A] make a unique identifier for documents
 *** TODO [#A] save the document to the db
-*** TODO [#A] make button to save the document
+*** TODO [#B] make button to save the document
 **** github (public/private) gist
 *** TODO [#B] clean up web ui
-*** TODO [#B] Deploy to a testing environment
-*** TODO [#B] add some automation
+*** TODO [#C] Deploy to a testing environment
+*** TODO [#C] add some automation
 **** tox.ini
 **** pep8 / coverage / jslint / better stuff? (fabric/grunt?)
 **** unit tests
 **** travis-ci setup and run
 **** readthedocs
-*** TODO [#C] ability to create a new environment
-*** TODO [#C] users can create a private environemnt
+*** NEXT [#B] ability to create a new environment
+*** users can create a private environemnt
 **** require a password to access environment
-*** TODO Allow user to set environment as readonly like a gist
+*** Allow user to set environment as readonly like a gist
 ** DONES
 *** DONE create a websocket server
 *** DONE create code editor environment
