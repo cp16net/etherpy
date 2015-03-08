@@ -44,8 +44,10 @@ class EtherpyApplication(Application):
 
         settings = dict(
             cookie_secret=secrets.COOKIE_SECRET,
-            template_path=os.path.join(os.path.dirname(__file__), "../templates"),
-            static_path=os.path.join(os.path.dirname(__file__), "../static"),
+            template_path=os.path.join(os.path.dirname(__file__),
+                                       "../templates"),
+            static_path=os.path.join(os.path.dirname(__file__),
+                                     "../static"),
             xsrf_cookies=True,
             debug=options.debug,
             github_api_key=secrets.GITHUB_CONSUMER_KEY,
@@ -63,6 +65,7 @@ def main():
     tor_options.parse_command_line()
     app = EtherpyApplication()
     app.listen(options.port)
+    print("Server Running: http://%s:%s" % ("localhost", options.port))
     ioloop.IOLoop.instance().start()
 
 

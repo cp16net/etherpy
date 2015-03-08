@@ -1,12 +1,19 @@
 <html>
-  <head>
-    <title>{{user['login']}} Profile</title>
-  </head>
-  <body>
-    <h1>{{user['login']}} Profile</h1>
-
-    <address>
-      <a href="mailto:cp16net@bart">cp16net</a>
-    </address>
-  </body>
+    <head>
+        <title>{{user['login']}} Profile</title>
+    </head>
+    <body>
+        <h1><img src="{{user['avatar_url']}}" width="20" height="20"/> {{user['login']}} Profile</h1>
+        {{user['name']}}<br/>
+        {{user['url']}}<br/>
+        {{user['gists_url']}}<br/>
+        {{user['name']}}<br/>
+        {{user['id']}}<br/>
+        {{user['blog']}}<br/>
+        {{user['location']}}<br/>
+        {{user['email']}}<br/>
+        <address>
+            <a href="mailto:cp16net@bart">cp16net</a>
+        </address>
+    </body>
 </html>

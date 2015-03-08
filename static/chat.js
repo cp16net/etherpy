@@ -23,8 +23,8 @@ $(document).ready(function() {
     $("#messageform").live("keypress", function(e) {
         if (e.keyCode == 13) {
             newMessage($(this));
-            return false;
         }
+        return false;
     });
     $("#message").select();
     updater.start();
@@ -54,7 +54,7 @@ var updater = {
         updater.socket = new WebSocket(url);
         updater.socket.onmessage = function(event) {
             updater.showMessage(JSON.parse(event.data));
-        }
+        };
     },
 
     showMessage: function(message) {

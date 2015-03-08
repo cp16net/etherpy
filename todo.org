@@ -6,10 +6,16 @@
 *** DONE [#A] cleanup and rename modules
 *** DONE [#A] identify users and allow login via google/github
 **** save users in database
-*** IN PROGRESS [#A] make a unique identifier for documents
-*** TODO [#A] save the document to the db
-*** TODO [#B] make button to save the document
-**** github (public/private) gist
+*** DONE [#A] make a unique identifier for documents
+*** DONE [#A] make button to save the document
+    CLOSED: [2015-03-08 Sun 01:36]
+*** TODO [#A] secure websocket
+**** DONE check origin of websocket
+     CLOSED: [2015-03-08 Sun 01:56]
+**** TODO validate user of websocket
+*** DONE [#A] save the document to the db
+    CLOSED: [2015-03-08 Sun 03:10]
+*** TODO [#B] export document to github (public/private) gist
 *** TODO [#B] clean up web ui
 *** TODO [#C] Deploy to a testing environment
 *** TODO [#C] add some automation

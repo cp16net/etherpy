@@ -1,6 +1,11 @@
 import os
 import logging
 import uuid
+try:
+    from urllib.parse import urlparse # py2
+except ImportError:
+    from urlparse import urlparse # py3
+
 
 from  tornado import escape
 from tornado.web import RequestHandler
@@ -10,19 +15,21 @@ import tornado.gen
 from auth.github import GithubMixin
 
 
-class BaseHandler(RequestHandler):
-    def get_current_user(self):
-        user = self.get_secure_cookie("user")
-        if user:
-            return tornado.escape.json_decode(user)
-        return None
-
+class DBMixin(object):
     def get_db_connection(self):
         return self.settings['db']
 
     def get_document_data(self, document_id):
         db = self.get_db_connection()
         return db.documents.find_one({"id":document_id})
+
+
+class BaseHandler(RequestHandler, DBMixin):
+    def get_current_user(self):
+        user = self.get_secure_cookie("user")
+        if user:
+            return tornado.escape.json_decode(user)
+        return None
 
 
 class MainHandler(BaseHandler):
@@ -33,6 +40,7 @@ class MainHandler(BaseHandler):
 class ProfileHandler(BaseHandler):
     def get(self, user_name):
         user = self.get_current_user()
+        logging.info("user: %s" % user)
         self.render("profile.html", user=user)
 
 
@@ -48,6 +56,7 @@ class CodeHandler(BaseHandler):
             "user": self.get_current_user(),
             "document_data": self.get_document_data(document_id),
         }
+        logging.info("document_data: %s" % config['document_data'])
         self.render("code.html", **config)
 
     def _find_ace_files(self, file_type):
@@ -67,10 +76,16 @@ class NewCodeHandler(BaseHandler):
         self.redirect("/code/" + document_id)
 
 
-class CodeSocketHandler(WebSocketHandler):
+class CodeSocketHandler(WebSocketHandler, DBMixin):
     waiters = set()
     cache = []
     cache_size = 50
+
+    # TODO check the origin for XSS
+    # def check_origin(self, origin):
+    #     # call super.check_origin()
+    #     parsed_origin = urlparse(origin)
+    #     return parsed_origin.netloc.endswith("cp16net.net")
 
     def open(self):
         self.id = str(uuid.uuid4())
@@ -111,10 +126,10 @@ class CodeSocketHandler(WebSocketHandler):
             CodeSocketHandler._update_cache(chat)
             CodeSocketHandler._send_updates(chat, self)
         elif parsed['type'] == "document_save":
-            user = self.get_current_user()
-            logging.info("got user: %s" % user)
+            # user = self.get_current_user()
+            # logging.info("got user: %s" % user)
             document = {
-                "user_id": user['_id'],
+                # "user_id": user['_id'],
                 "id": parsed['data']['id'],
                 "body": parsed['data']['body'],
                 "theme": parsed['data']['theme'],
