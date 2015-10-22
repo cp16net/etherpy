@@ -1,18 +1,22 @@
 import os
+import json
 import logging
 import uuid
 try:
-    from urllib.parse import urlparse # py2
+    from urllib.parse import urlparse  # py2
 except ImportError:
-    from urlparse import urlparse # py3
+    from urlparse import urlparse  # py3
 
-
-from  tornado import escape
+from tornado import escape
 from tornado.web import RequestHandler
 from tornado.websocket import WebSocketHandler
 import tornado.gen
 
 from auth.github import GithubMixin
+
+
+VCAP_APP = json.loads(os.environ['VCAP_APPLICATION'])
+APP_URL = 'http://' + VCAP_APP['uris'][0]
 
 
 class DBMixin(object):
@@ -21,7 +25,7 @@ class DBMixin(object):
 
     def get_document_data(self, document_id):
         db = self.get_db_connection()
-        return db.documents.find_one({"id":document_id})
+        return db.documents.find_one({"id": document_id})
 
 
 class BaseHandler(RequestHandler, DBMixin):
@@ -144,7 +148,7 @@ class CodeSocketHandler(WebSocketHandler, DBMixin):
 
 
 class GithubLoginHandler(BaseHandler, GithubMixin):
-    _OAUTH_REDIRECT_URL = 'http://localhost:8888/'
+    _OAUTH_REDIRECT_URL = APP_URL
 
     @tornado.gen.coroutine
     def get(self):

@@ -1,0 +1,12 @@
+---
+applications:
+- name: etherpy
+  mem: 128M
+  services:
+    ${name}-db:
+      type: mongodb
+  stackato:
+    hooks:
+      post-staging:
+      # setting up in filesystem
+      - sh stackato-setup.sh

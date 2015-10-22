@@ -1,6 +1,7 @@
+import json
 import logging
 import os
-from pymongo import MongoClient
+import pymongo
 import uuid
 
 from tornado import escape
@@ -24,9 +25,31 @@ from handlers import NewCodeHandler
 from handlers import CodeSocketHandler
 from handlers import LogoutHandler
 
-define("port", default=8888, help="port to run on", type=int)
+
+# Utility code to retrieve Cloud Foundry production service information
+if 'VCAP_APP_PORT' in os.environ:
+    port = int(os.getenv('VCAP_APP_PORT'))
+    j = json.loads(os.getenv('VCAP_SERVICES'))
+    print(j)
+    mongodb = j['mongodb'][0]
+else:
+    # this is localhost
+    port = 8888
+    mongodb = dict(options=dict(hostname='localhost',
+                                port=27017,
+                                db='db'))
+
+define("port", default=port, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode", type=bool)
 
+if 'username' in mongodb['credentials']:
+    mongouri = 'mongodb://{username}:{password}@{hostname}:{port}/{db}'
+else:
+    mongouri = 'mongodb://{hostname}:{port}'
+mongouri = mongouri.format(**mongodb['credentials'])
+print('Connecting to %s' % mongouri)
+mongo = pymongo.MongoClient(mongouri)
+mongo_db = mongo.db
 
 class EtherpyApplication(Application):
     def __init__(self):
@@ -40,21 +63,22 @@ class EtherpyApplication(Application):
             (r"/user/(.*)", ProfileHandler),
         ]
 
-        client = MongoClient(secrets.MONGO_HOST, secrets.MONGO_PORT)
-
+        print(os.path.dirname(__file__))
+        template_path = os.path.join(os.path.dirname(__file__), "templates")
+        static_path = os.path.join(os.path.dirname(__file__), "static")
+        print(template_path)
+        print(static_path)
         settings = dict(
             cookie_secret=secrets.COOKIE_SECRET,
-            template_path=os.path.join(os.path.dirname(__file__),
-                                       "../templates"),
-            static_path=os.path.join(os.path.dirname(__file__),
-                                     "../static"),
+            template_path=template_path,
+            static_path=static_path,
             xsrf_cookies=True,
             debug=options.debug,
             github_api_key=secrets.GITHUB_CONSUMER_KEY,
             github_secret=secrets.GITHUB_CONSUMER_SECRET,
             github_scope="user:email,gist",
             extra_fields=[],
-            db=client.etherpy
+            db=mongo_db
         )
         Application.__init__(self, handlers, **settings)
 
